@@ -1,231 +1,231 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>apiOmk — Lire & écrire avec l’API Omeka S</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f172a;          /* slate-900 */
-      --fg: #e2e8f0;          /* slate-200 */
-      --muted: #94a3b8;       /* slate-400 */
-      --accent: #22c55e;      /* green-500 */
-      --accent-2: #ef4444;    /* red-500 */
-      --card: #111827;        /* gray-900 */
-      --border: #1f2937;      /* gray-800 */
-    }
-    html, body { height: 100%; }
-    body {
-      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      background: var(--bg); color: var(--fg);
-      display: grid; grid-template-rows: auto 1fr auto;
-    }
-    header, footer { padding: 1rem clamp(1rem, 3vw, 2rem); background: var(--card); border-bottom: 1px solid var(--border); }
-    footer { border-top: 1px solid var(--border); border-bottom: none; }
-    h1 { margin: 0; font-size: clamp(1.1rem, 2.8vw, 1.6rem); }
-    main { padding: 1rem clamp(1rem, 3vw, 2rem); display: grid; gap: 1rem; }
-
-    .grid { display: grid; gap: .75rem; }
-    .grid-2 { grid-template-columns: 1fr; }
-    @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
-
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: .6rem; padding: 1rem; }
-    label { font-size: .9rem; color: var(--muted); }
-    input, select, button, textarea { font: inherit; }
-    input[type="text"], input[type="number"], textarea {
-      width: 100%; padding: .55rem .7rem; color: var(--fg); background: #0b1220; border: 1px solid var(--border); border-radius: .5rem;
-    }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-    .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-    button { padding: .5rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: #0b1220; color: var(--fg); cursor: pointer; }
-    button.primary { background: #052e1b; border-color: #064e3b; color: #bbf7d0; }
-    button.warn { background: #3b0a0a; border-color: #7f1d1d; color: #fecaca; }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-
-    ul#listeEtudiants { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
-    ul#listeEtudiants li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .7rem; background: #0b1220; border: 1px solid var(--border); border-radius: .5rem; }
-    .li-title { font-weight: 600; }
-
-    pre { max-height: 240px; overflow: auto; background: #0b1220; padding: .75rem; border-radius: .5rem; border: 1px solid var(--border); }
-    .muted { color: var(--muted); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliothèque Vocale Intelligente</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; background-color: #f9f9f9; }
+        h1 { color: #333; }
+        #controls { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #champRecherche { width: 300px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; background-color: #007bff; color: white; }
+        button:hover { background-color: #0056b3; }
+        #btnParler { background-color: #28a745; }
+        #btnParler:hover { background-color: #218838; }
+        #listeResultats { list-style-type: none; padding: 0; margin-top: 20px; }
+        #listeResultats li { background-color: #fff; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 20px; }
+        #listeResultats strong { display: block; font-size: 1.2em; color: #0056b3; margin-bottom: 5px; }
+        #listeResultats button { margin-left: 10px; background-color: #ffc107; color: black; }
+        #listeResultats button:hover { background-color: #e0a800; }
+        #statutVoix { margin-top:10px; font-style: italic; color: #555; }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Lire & écrire avec l’API Omeka S — <span class="muted">apiOmk.html</span></h1>
-  </header>
 
-  <main class="grid">
-    <!-- Panneau Connexion / Contexte -->
-    <section class="card grid">
-      <div class="row">
-        <div>
-          <label for="baseUrl">Base Omeka S (URL)</label>
-          <input id="baseUrl" type="text" value="http://localhost/omk_thyp_25-26" />
-        </div>
-        <div>
-          <label for="classId">resource_class_id (liste)</label>
-          <input id="classId" type="number" value="94" />
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <label for="ec">Unité d’enseignement (fup8:hasEC)</label>
-          <input id="ec" type="text" placeholder="Ex. Langage du web" />
-        </div>
-        <div>
-          <label for="dateEvt">Date/heure de l’événement</label>
-          <input id="dateEvt" type="text" />
-        </div>
-      </div>
-      <div class="actions">
-        <button id="btnCharger" class="primary">Charger la liste</button>
-        <button id="btnMaintenant">Maintenant</button>
-        <span id="userInfo" class="muted">Vérification de l’utilisateur…</span>
-      </div>
-    </section>
+    <h1>📚 Bibliothèque Vocale Intelligente</h1>
+    <p>Recherchez un livre par la voix ou au clavier, puis écoutez le résumé.</p>
 
-    <!-- Liste des étudiants (items) -->
-    <section class="card grid">
-      <div class="actions" style="justify-content: space-between;">
-        <strong>Étudiants</strong>
-        <span id="count" class="muted"></span>
-      </div>
-      <ul id="listeEtudiants"></ul>
-    </section>
+    <div id="controls">
+        <button id="btnParler">Parler 🎙️</button>
+        <input type="text" id="champRecherche" placeholder="Ou tapez votre recherche...">
+        <button id="btnRechercher">Rechercher 🔍</button>
+        <div id="statutVoix"></div>
+    </div>
 
-    <!-- Résultats / retours API -->
-    <section class="card grid-2 grid">
-      <div class="grid">
-        <strong>Requête (GET items)</strong>
-        <pre id="reqView" class="muted"></pre>
-      </div>
-      <div class="grid">
-        <strong>Résultat (création d’événement)</strong>
-        <pre id="resultCrea" class="muted"></pre>
-      </div>
-    </section>
-  </main>
+    <h2>Résultats :</h2>
+    <ul id="listeResultats"></ul>
 
-  <footer>
-    <p>&copy; 2025 Présences THYP — Démo API OMK</p>
-  </footer>
+    <script>
+        // Note: J'ai enlevé "type=module" pour éviter les problèmes CORS avec les modules 'auth.js'.
+        // Ce script est maintenant autonome.
 
-  <script type="module">
-    // --- Imports (doivent exister dans ./modules/) ---
-    import { auth } from './modules/auth.js';
-    import { pa } from './modules/authParams.js';
+        // --- 1. CONFIGURATION OBLIGATOIRE (REMPLIE AVEC VOS INFORMATIONS) ---
 
-    // --- Initialisation ---
-    const a = new auth(pa);
+        const OMEKA_API_URL = "http://localhost/omeka-s/api/"; 
+        
+        // --- Clés d'API (Trouvées à l'étape 1) ---
+        const API_KEY_IDENTITY = "tNpFTjx4GnkWGa2Hduf0ti3kIwIKiN1Y";
+        const API_KEY_CREDENTIAL = "LIcwTBnUOyRIiNtToTz5OnJ1heSn6IcB";
 
-    const $ = (sel) => document.querySelector(sel);
-    const baseUrlEl = $('#baseUrl');
-    const classIdEl = $('#classId');
-    const ecEl = $('#ec');
-    const dateEvtEl = $('#dateEvt');
-    const userInfoEl = $('#userInfo');
-    const reqViewEl = $('#reqView');
-    const countEl = $('#count');
+        // --- IDs de votre Admin Omeka (Trouvés à l'étape 2) ---
+        const ID_MODELE_LOG_RECHERCHE = 5; // ID Modèle "Log Recherche"
+        
+        const ID_PROP_TERME = 185;      // ID pour "bvi:termeRecherche"
+        const ID_PROP_SOURCE = 186;     // ID pour "bvi:sourceRecherche"
+        const ID_PROP_CONFIANCE = 187;  // ID pour "bvi:confianceScore"
+        const ID_PROP_DATE = 7;         // ID pour "dcterms:date"
 
-    // Remplir la date par défaut
-    const setNow = () => {
-      const now = new Date();
-      // ISO 8601 pour la compatibilité serveur, mais on affiche lisible
-      dateEvtEl.value = now.toISOString();
-    };
-    setNow();
 
-    $('#btnMaintenant').addEventListener('click', setNow);
+        // --- 2. ÉLÉMENTS DE LA PAGE ---
+        const btnParler = document.getElementById('btnParler');
+        const btnRechercher = document.getElementById('btnRechercher');
+        const champRecherche = document.getElementById('champRecherche');
+        const listeResultats = d3.select('#listeResultats');
+        const statutVoix = document.getElementById('statutVoix');
 
-    // Afficher l'utilisateur connecté (via votre module auth)
-    a.getUser((u) => {
-      const label = u?.name || u?.email || JSON.stringify(u) || 'inconnu';
-      userInfoEl.textContent = `Utilisateur connecté : ${label}`;
-    });
 
-    // Charger la liste des items (ex. étudiants) d'une classe
-    async function chargerListe() {
-      const base = baseUrlEl.value.replace(/\/$/, '');
-      const classId = Number(classIdEl.value || 0);
-      const url = `${base}/api/items?resource_class_id=${classId}`;
-      reqViewEl.textContent = url;
+        // --- 3. RECHERCHE VOCALE (Web Speech API) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'fr-FR'; // Langue française
 
-      $('#listeEtudiants').innerHTML = '';
-      countEl.textContent = '';
+            btnParler.onclick = () => {
+                statutVoix.textContent = "Je vous écoute...";
+                recognition.start();
+            };
 
-      try {
-        const data = await d3.json(url);
-        countEl.textContent = `${data.length} item(s)`;
+            // Quand la voix est reconnue
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                const confidence = event.results[0][0].confidence;
+                
+                statutVoix.textContent = `Vous avez dit : "${transcript}"`;
+                champRecherche.value = transcript; // Mettre le texte dans le champ
+                
+                rechercherLivres(transcript); // Lancer la recherche
+                journaliserRecherche(transcript, 'voix', confidence); // Journaliser
+            };
+            
+            recognition.onerror = (event) => {
+                statutVoix.textContent = "Erreur de reconnaissance vocale: " + event.error;
+                console.error("Erreur SpeechRecognition:", event);
+            };
 
-        const li = d3
-          .select('#listeEtudiants')
-          .selectAll('li')
-          .data(data, (d) => d['o:id'])
-          .enter()
-          .append('li');
+            recognition.onspeechend = () => {
+                recognition.stop();
+            };
 
-        li.append('span').attr('class', 'li-title').text((d) => d['o:title']);
+        } else {
+            // Si l'API n'est pas supportée
+            btnParler.disabled = true;
+            statutVoix.textContent = "API Web Speech non supportée sur ce navigateur (essayez Chrome ou Edge).";
+        }
 
-        const btns = li.append('span').attr('class', 'actions');
 
-        btns
-          .append('button')
-          .attr('class', 'primary')
-          .text('présent')
-          .on('click', (event, d) => creerPresence(d, false));
+        // --- 4. RECHERCHE TEXTE (Bouton) ---
+        btnRechercher.onclick = () => {
+            const terme = champRecherche.value;
+            if (terme) {
+                statutVoix.textContent = "";
+                rechercherLivres(terme);
+                journaliserRecherche(terme, 'texte', null); // Pas de score de confiance
+            }
+        };
 
-        btns
-          .append('button')
-          .attr('class', 'warn')
-          .text('absent')
-          .on('click', (event, d) => creerPresence(d, true));
-      } catch (err) {
-        countEl.textContent = 'Erreur de chargement';
-        console.error(err);
-        reqViewEl.textContent += "\n\n" + (err?.message || err);
-      }
-    }
 
-    $('#btnCharger').addEventListener('click', chargerListe);
+        // --- 5. FONCTION DE RECHERCHE OMEKA S (LIRE les données) ---
+        function rechercherLivres(terme) {
+            // Interroge l'API Omeka S pour trouver des items (pas besoin de clé pour LIRE)
+            const url = `${OMEKA_API_URL}items?search=${encodeURIComponent(terme)}`;
+            
+            listeResultats.html('<li>Chargement...</li>'); // Message d'attente
+            
+            d3.json(url).then(data => {
+                listeResultats.html(''); // Vider la liste
+                
+                if (!data || data.length === 0) {
+                    listeResultats.append('li').text("Aucun livre trouvé pour ce terme.");
+                    return;
+                }
+                
+                // Afficher chaque résultat
+                data.forEach(item => {
+                    const titre = item['o:title'] || "Titre inconnu";
+                    // Le résumé est dans 'dcterms:abstract' (un tableau)
+                    const resume = item['dcterms:abstract'] ? item['dcterms:abstract'][0]['@value'] : "Pas de résumé.";
+                    
+                    const li = listeResultats.append('li')
+                        .html(`<strong>${titre}</strong><br>${resume}`);
+                    
+                    // Bouton NARRATION (Text-to-Speech)
+                    li.append('button').text('Écouter 🔊').on('click', () => {
+                        parlerTexte(`${titre}. Résumé : ${resume}`);
+                    });
+                });
+            }).catch(err => {
+                listeResultats.html('<li>Erreur lors du chargement des résultats.</li>');
+                console.error("Erreur D3/Fetch:", err);
+            });
+        }
 
-    // Fonction utilitaire : construit le payload simplifié attendu par votre wrapper a.omk.createItem
-    function buildEventPayload(etudiantItem, absent = false) {
-      const titre = `${absent ? 'Absence' : 'Présence'} de ${etudiantItem['o:title']} — ${new Date(dateEvtEl.value || new Date()).toLocaleString()}`;
-      const payload = {};
 
-      // Selon votre wrapper, ces clefs en termes sont acceptées et mappées côté client en JSON-LD Omeka S.
-      payload['o:resource_class'] = 'dctype:Event';
-      payload['dcterms:title'] = titre;
-      payload['dcterms:valid'] = dateEvtEl.value || new Date().toISOString();
+        // --- 6. FONCTION DE NARRATION (Text-to-Speech) ---
+        function parlerTexte(texte) {
+            // Annule la lecture précédente
+            window.speechSynthesis.cancel(); 
+            
+            const narration = new SpeechSynthesisUtterance(texte);
+            narration.lang = 'fr-FR'; // Langue française
+            window.speechSynthesis.speak(naraction);
+        }
+        
 
-      // Liez l'UE si fournie (valeur littérale simple)
-      const ec = ecEl.value?.trim();
-      if (ec) payload['fup8:hasEC'] = ec;
+        // --- 7. FONCTION DE JOURNALISATION OMEKA S (ÉCRIRE des données) ---
+        async function journaliserRecherche(terme, source, confiance) {
+            console.log(`Journalisation : ${terme} (source: ${source})`);
 
-      // Relation vers l'étudiant (ressource)
-      // Votre wrapper accepte le format { rid: <o:id> } pour les relations de ressource.
-      payload['fup8:hasEtudiant'] = { rid: etudiantItem['o:id'] };
+            // 1. Construire l'URL d'authentification
+            const authParams = `?key_identity=${API_KEY_IDENTITY}&key_credential=${API_KEY_CREDENTIAL}`;
+            const url = `${OMEKA_API_URL}items${authParams}`;
 
-      // Vous pouvez ajouter d'autres propriétés ici (template, etc.) si votre wrapper les supporte.
-      // ex: payload['o:resource_template'] = 'Présence';
+            // 2. Préparer les données JSON (comme dans l'exemple du prof)
+            let data = {
+                "o:resource_template": { "o:id": ID_MODELE_LOG_RECHERCHE },
+                "dcterms:title": `Recherche : "${terme}"`, // Titre pour l'item Omeka
+                
+                // --- Propriétés personnalisées ---
+                "bvi:termeRecherche": [{ 
+                    "type": "literal", 
+                    "property_id": ID_PROP_TERME, 
+                    "@value": terme 
+                }],
+                "bvi:sourceRecherche": [{ 
+                    "type": "literal", 
+                    "property_id": ID_PROP_SOURCE, 
+                    "@value": source 
+                }],
+                "dcterms:date": [{ 
+                    "type": "literal", 
+                    "property_id": ID_PROP_DATE, 
+                    "@value": new Date().toISOString() // Date actuelle
+                }]
+            };
 
-      return payload;
-    }
-
-    // Création d'un événement de présence/absence
-    function creerPresence(etudiantItem, absent = false) {
-      const body = buildEventPayload(etudiantItem, absent);
-      // Appel via votre client Omeka S (wrapper)
-      a.omk.createItem(body, (retour) => {
-        // Affiche la réponse JSON brute
-        $('#resultCrea').textContent = JSON.stringify(retour, null, 2);
-      });
-    }
-
-    // Charger automatiquement au premier affichage
-    chargerListe();
-  </script>
+            // 3. Ajouter le score de confiance SEULEMENT si ce n'est pas nul (recherche vocale)
+            if (confiance) {
+                data["bvi:confianceScore"] = [{ 
+                    "type": "literal", 
+                    "property_id": ID_PROP_CONFIANCE, 
+                    "@value": confiance 
+                }];
+            }
+            
+            // 4. Envoyer la requête "POST" (ÉCRIRE)
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    // Si l'API renvoie une erreur (ex: clé API incorrecte)
+                    const error = await response.json();
+                    console.error("Erreur de journalisation:", error.errors.error);
+                } else {
+                    const newItem = await response.json();
+                    console.log("Recherche journalisée avec succès ! Item créé:", newItem['o:id']);
+                }
+            } catch (err) {
+                console.error("Erreur réseau lors de la journalisation:", err);
+            }
+        }
+        
+    </script>
 </body>
 </html>
