@@ -119,7 +119,7 @@
         // --- 5. FONCTION DE RECHERCHE OMEKA S (LIRE les données) ---
         function rechercherLivres(terme) {
             // Interroge l'API Omeka S pour trouver des items (pas besoin de clé pour LIRE)
-            const url = `${OMEKA_API_URL}items?search=${encodeURIComponent(terme)}`;
+            const url = `${OMEKA_API_URL}items?resource_class_id=1045&search=${encodeURIComponent(terme)}`;
             
             listeResultats.html('<li>Chargement...</li>'); // Message d'attente
             
@@ -159,7 +159,7 @@
             
             const narration = new SpeechSynthesisUtterance(texte);
             narration.lang = 'fr-FR'; // Langue française
-            window.speechSynthesis.speak(naraction);
+            window.speechSynthesis.speak(narration);
         }
         
 
