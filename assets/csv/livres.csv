@@ -1,2 +1,5 @@
-resource_template,dcterms:title,dcterms:description,bv:isbn,bv:publishedYear,bv:hasAuthor,bv:hasTheme
-Livre,"Fondation","Cycle SF…","9782070415731","1951","Isaac Asimov","Science-fiction"
+titre,resume,isbn,annee,auteur_nom
+Les Misérables,"Roman sur la justice sociale, l'amour et la rédemption dans le Paris du 19e siècle.",978-0140444308,1862,Victor Hugo
+Notre-Dame de Paris,"L'histoire tragique du sonneur de cloches Quasimodo et de la belle Esméralda.",978-0451527700,1831,Victor Hugo
+Fondation,"Le premier livre du cycle de la Fondation, où un mathématicien prédit la chute d'un empire galactique.",978-0553293357,1951,Isaac Asimov
+Le Deuxième Sexe,"Essai philosophique fondamental sur la condition féminine et l'existentialisme féministe.",978-2070385904,1949,Simone de Beauvoir
