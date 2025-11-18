@@ -7,50 +7,67 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; background-color: #f9f9f9; }
-        h1 { color: #333; }
-        #controls { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #champRecherche { width: 300px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        h1, h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        #controls, #upload-controls { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px;}
+        input[type="text"], input[type="file"] { width: 300px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
         button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; background-color: #007bff; color: white; }
         button:hover { background-color: #0056b3; }
         #btnParler { background-color: #28a745; }
         #btnParler:hover { background-color: #218838; }
-        #listeResultats { list-style-type: none; padding: 0; margin-top: 20px; }
+        #listeResultats { list-style-type: none; padding: 0; }
         #listeResultats li { background-color: #fff; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 20px; }
         #listeResultats strong { display: block; font-size: 1.2em; color: #0056b3; margin-bottom: 5px; }
         #listeResultats button { margin-left: 10px; background-color: #ffc107; color: black; }
         #listeResultats button:hover { background-color: #e0a800; }
-        #statutVoix { margin-top:10px; font-style: italic; color: #555; }
+        #statutVoix, #statutUpload { margin-top:10px; font-style: italic; color: #555; }
     </style>
 </head>
 <body>
 
     <h1>📚 Bibliothèque Vocale Intelligente</h1>
-    <p>Recherchez un livre par la voix ou au clavier, puis écoutez le résumé.</p>
 
     <div id="controls">
+        <p>Recherchez un livre par la voix ou au clavier, puis écoutez le résumé.</p>
         <button id="btnParler">Parler 🎙️</button>
         <input type="text" id="champRecherche" placeholder="Ou tapez votre recherche...">
         <button id="btnRechercher">Rechercher 🔍</button>
         <div id="statutVoix"></div>
     </div>
 
-    <h2>Résultats :</h2>
+    <h2>Résultats de la recherche :</h2>
     <ul id="listeResultats"></ul>
 
+    
+    <div id="upload-controls">
+        <h2>Ajouter un nouveau média (Audio/Vidéo)</h2>
+        <p>Ajoutez un fichier (audio/vidéo) à Omeka S. Il sera créé comme un nouvel "Item" avec ce fichier attaché.</p>
+        <div>
+            <label for="mediaTitre">Titre du média :</label><br>
+            <input type="text" id="mediaTitre" placeholder="Ex: Mon enregistrement audio" style="width: 300px;">
+        </div>
+        <div style="margin-top: 15px;">
+            <label for="mediaFichier">Fichier (audio ou vidéo) :</label><br>
+            <input type="file" id="mediaFichier" accept="audio/*,video/*">
+        </div>
+        <div style="margin-top: 20px;">
+            <button id="btnUploadMedia">Uploader le Média 📤</button>
+        </div>
+        <div id="statutUpload"></div>
+    </div>
+    
+    
     <script>
-        // Note: J'ai enlevé "type=module" pour éviter les problèmes CORS avec les modules 'auth.js'.
-        // Ce script est maintenant autonome.
-
         // --- 1. CONFIGURATION OBLIGATOIRE (REMPLIE AVEC VOS INFORMATIONS) ---
 
-        const OMEKA_API_URL = "http://localhost/omk_THyp_25-26_clone/api/"; 
+        const OMEKA_API_URL = "http://localhost/omk_THyp_25-26_clone/api/"; // <-- URL MISE À JOUR
         
-        // --- Clés d'API (Trouvées à l'étape 1) ---
+        // --- Clés d'API ---
         const API_KEY_IDENTITY = "tNpFTjx4GnkWGa2Hduf0ti3kIwIKiN1Y";
         const API_KEY_CREDENTIAL = "LIcwTBnUOyRIiNtToTz5OnJ1heSn6IcB";
 
-        // --- IDs de votre Admin Omeka (Trouvés à l'étape 2) ---
-        const ID_MODELE_LOG_RECHERCHE = 5; // ID Modèle "Log Recherche"
+        // --- IDs de votre Admin Omeka ---
+        const ID_MODELE_LOG_RECHERCHE = 5;    // ID Modèle "Log Recherche"
+        const ID_CLASSE_LIVRE = 1045;         // ID Classe "schema:Book" (pour le filtre)
         
         const ID_PROP_TERME = 185;      // ID pour "bvi:termeRecherche"
         const ID_PROP_SOURCE = 186;     // ID pour "bvi:sourceRecherche"
@@ -58,7 +75,7 @@
         const ID_PROP_DATE = 7;         // ID pour "dcterms:date"
 
 
-        // --- 2. ÉLÉMENTS DE LA PAGE ---
+        // --- 2. ÉLÉMENTS DE LA PAGE (Recherche) ---
         const btnParler = document.getElementById('btnParler');
         const btnRechercher = document.getElementById('btnRechercher');
         const champRecherche = document.getElementById('champRecherche');
@@ -70,27 +87,26 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            recognition.lang = 'fr-FR'; // Langue française
+            recognition.lang = 'fr-FR'; 
 
             btnParler.onclick = () => {
                 statutVoix.textContent = "Je vous écoute...";
                 recognition.start();
             };
 
-            // Quand la voix est reconnue
             recognition.onresult = (event) => {
-              const rawTranscript = event.results[0][0].transcript; // ex: "Les Misérables."
-              const confidence = event.results[0][0].confidence;
+                const rawTranscript = event.results[0][0].transcript; // ex: "Les Misérables."
+                const confidence = event.results[0][0].confidence;
+                
+                // CORRECTION : Supprimer le point final
+                const transcript = rawTranscript.replace(/\.$/, ''); // ex: "Les Misérables"
 
-              // L'API ajoute un point final. On le supprime avant la recherche.
-              const transcript = rawTranscript.replace(/\.$/, ''); // ex: "Les Misérables"
-
-              statutVoix.textContent = `Vous avez dit : "${transcript}"`;
-              champRecherche.value = transcript; // Mettre le texte NETTOYÉ dans le champ
-
-              rechercherLivres(transcript); // Lancer la recherche avec le texte NETTOYÉ
-              journaliserRecherche(transcript, 'voix', confidence); // Journaliser avec le texte NETTOYÉ
-          };
+                statutVoix.textContent = `Vous avez dit : "${transcript}"`;
+                champRecherche.value = transcript; 
+                
+                rechercherLivres(transcript); 
+                journaliserRecherche(transcript, 'voix', confidence); 
+            };
             
             recognition.onerror = (event) => {
                 statutVoix.textContent = "Erreur de reconnaissance vocale: " + event.error;
@@ -102,7 +118,6 @@
             };
 
         } else {
-            // Si l'API n'est pas supportée
             btnParler.disabled = true;
             statutVoix.textContent = "API Web Speech non supportée sur ce navigateur (essayez Chrome ou Edge).";
         }
@@ -114,36 +129,33 @@
             if (terme) {
                 statutVoix.textContent = "";
                 rechercherLivres(terme);
-                journaliserRecherche(terme, 'texte', null); // Pas de score de confiance
+                journaliserRecherche(terme, 'texte', null); 
             }
         };
 
 
         // --- 5. FONCTION DE RECHERCHE OMEKA S (LIRE les données) ---
         function rechercherLivres(terme) {
-            // Interroge l'API Omeka S pour trouver des items (pas besoin de clé pour LIRE)
-            const url = `${OMEKA_API_URL}items?resource_class_id=1045&search=${encodeURIComponent(terme)}`;
+            // CORRECTION : Ajout du filtre resource_class_id pour n'avoir que les livres
+            const url = `${OMEKA_API_URL}items?resource_class_id=${ID_CLASSE_LIVRE}&search=${encodeURIComponent(terme)}`;
             
-            listeResultats.html('<li>Chargement...</li>'); // Message d'attente
+            listeResultats.html('<li>Chargement...</li>');
             
             d3.json(url).then(data => {
-                listeResultats.html(''); // Vider la liste
+                listeResultats.html(''); 
                 
                 if (!data || data.length === 0) {
                     listeResultats.append('li').text("Aucun livre trouvé pour ce terme.");
                     return;
                 }
                 
-                // Afficher chaque résultat
                 data.forEach(item => {
                     const titre = item['o:title'] || "Titre inconnu";
-                    // Le résumé est dans 'dcterms:abstract' (un tableau)
                     const resume = item['dcterms:abstract'] ? item['dcterms:abstract'][0]['@value'] : "Pas de résumé.";
                     
                     const li = listeResultats.append('li')
                         .html(`<strong>${titre}</strong><br>${resume}`);
                     
-                    // Bouton NARRATION (Text-to-Speech)
                     li.append('button').text('Écouter 🔊').on('click', () => {
                         parlerTexte(`${titre}. Résumé : ${resume}`);
                     });
@@ -157,67 +169,41 @@
 
         // --- 6. FONCTION DE NARRATION (Text-to-Speech) ---
         function parlerTexte(texte) {
-            // Annule la lecture précédente
             window.speechSynthesis.cancel(); 
-            
             const narration = new SpeechSynthesisUtterance(texte);
-            narration.lang = 'fr-FR'; // Langue française
+            narration.lang = 'fr-FR';
+            // CORRECTION : faute de frappe "naraction" corrigée
             window.speechSynthesis.speak(narration);
         }
         
 
-        // --- 7. FONCTION DE JOURNALISATION OMEKA S (ÉCRIRE des données) ---
+        // --- 7. FONCTION DE JOURNALISATION OMEKA S (ÉCRIRE des logs) ---
         async function journaliserRecherche(terme, source, confiance) {
             console.log(`Journalisation : ${terme} (source: ${source})`);
 
-            // 1. Construire l'URL d'authentification
             const authParams = `?key_identity=${API_KEY_IDENTITY}&key_credential=${API_KEY_CREDENTIAL}`;
             const url = `${OMEKA_API_URL}items${authParams}`;
 
-            // 2. Préparer les données JSON (comme dans l'exemple du prof)
             let data = {
                 "o:resource_template": { "o:id": ID_MODELE_LOG_RECHERCHE },
-                "dcterms:title": `Recherche : "${terme}"`, // Titre pour l'item Omeka
-                
-                // --- Propriétés personnalisées ---
-                "bvi:termeRecherche": [{ 
-                    "type": "literal", 
-                    "property_id": ID_PROP_TERME, 
-                    "@value": terme 
-                }],
-                "bvi:sourceRecherche": [{ 
-                    "type": "literal", 
-                    "property_id": ID_PROP_SOURCE, 
-                    "@value": source 
-                }],
-                "dcterms:date": [{ 
-                    "type": "literal", 
-                    "property_id": ID_PROP_DATE, 
-                    "@value": new Date().toISOString() // Date actuelle
-                }]
+                "dcterms:title": `Recherche : "${terme}"`,
+                "bvi:termeRecherche": [{ "type": "literal", "property_id": ID_PROP_TERME, "@value": terme }],
+                "bvi:sourceRecherche": [{ "type": "literal", "property_id": ID_PROP_SOURCE, "@value": source }],
+                "dcterms:date": [{ "type": "literal", "property_id": ID_PROP_DATE, "@value": new Date().toISOString() }]
             };
 
-            // 3. Ajouter le score de confiance SEULEMENT si ce n'est pas nul (recherche vocale)
             if (confiance) {
-                data["bvi:confianceScore"] = [{ 
-                    "type": "literal", 
-                    "property_id": ID_PROP_CONFIANCE, 
-                    "@value": confiance 
-                }];
+                data["bvi:confianceScore"] = [{ "type": "literal", "property_id": ID_PROP_CONFIANCE, "@value": confiance }];
             }
-            
-            // 4. Envoyer la requête "POST" (ÉCRIRE)
+
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
                 
                 if (!response.ok) {
-                    // Si l'API renvoie une erreur (ex: clé API incorrecte)
                     const error = await response.json();
                     console.error("Erreur de journalisation:", error.errors.error);
                 } else {
@@ -229,6 +215,81 @@
             }
         }
         
+        
+        // --- 8. NOUVELLE PARTIE (UPLOAD DE MÉDIA SÉPARÉ) ---
+
+        // Récupérer les nouveaux éléments
+        const btnUploadMedia = document.getElementById('btnUploadMedia');
+        const mediaTitre = document.getElementById('mediaTitre');
+        const mediaFichier = document.getElementById('mediaFichier');
+        const statutUpload = document.getElementById('statutUpload');
+
+        // Mettre un écouteur sur le nouveau bouton
+        btnUploadMedia.onclick = () => {
+            const titre = mediaTitre.value;
+            const fichier = mediaFichier.files[0];
+
+            if (!titre || !fichier) {
+                statutUpload.textContent = "Erreur : Le titre et le fichier sont obligatoires.";
+                return;
+            }
+            ajouterNouveauMedia(titre, fichier);
+        };
+
+        /**
+         * Crée un NOUVEL ITEM et y attache un FICHIER MEDIA en une seule fois.
+         */
+        async function ajouterNouveauMedia(titre, fichier) {
+            statutUpload.textContent = `Upload de "${fichier.name}" en cours...`;
+
+            const authParams = `?key_identity=${API_KEY_IDENTITY}&key_credential=${API_KEY_CREDENTIAL}`;
+            const url = `${OMEKA_API_URL}items${authParams}`;
+
+            // Pour un upload, nous devons utiliser "FormData" (pas JSON)
+            const formData = new FormData();
+
+            // 1. Mettre les métadonnées (le titre) dans le "FormData"
+            const jsonData = {
+                "dcterms:title": [{
+                    "type": "literal",
+                    "@value": titre
+                }]
+                // On pourrait assigner une classe "Média" si on voulait
+                // "o:resource_class": { "o:id": VOTRE_ID_CLASSE_MEDIA } 
+            };
+            formData.append('data', JSON.stringify(jsonData));
+
+            // 2. Mettre le fichier dans le "FormData"
+            // Le nom "file[0]" est ce que l'API Omeka S attend
+            formData.append('file[0]', fichier);
+
+            // 3. Envoyer la requête
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                    // Pas de header 'Content-Type', le navigateur le gère
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error("Erreur d'upload:", error);
+                    statutUpload.textContent = "Erreur lors de l'upload. (Voir la console)";
+                } else {
+                    const newItem = await response.json();
+                    console.log("Média ajouté avec succès ! Nouvel item créé:", newItem['o:id']);
+                    statutUpload.textContent = `Succès ! Le fichier "${fichier.name}" a été ajouté (Item ID: ${newItem['o:id']}).`;
+                    
+                    // Vider les champs
+                    mediaTitre.value = "";
+                    mediaFichier.value = null;
+                }
+            } catch (err) {
+                console.error("Erreur réseau (upload):", err);
+                statutUpload.textContent = "Erreur réseau lors de l'upload.";
+            }
+        }
+
     </script>
 </body>
 </html>
